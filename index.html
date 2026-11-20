@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ringgit Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Libre+Caslon+Text:wght@400;700&display=swap">
+<style>
+/* VOICE: calm and exact, like a bank passbook kept by someone careful
+   IDEA: a savings passbook, with ruled ledger lines and one balance printed large
+   PICTURE: the balance figure over a full-width spend gauge with an even-pace marker
+   COLOUR and TYPE: white, ink and a deep teal band; Libre Caslon Text for figures, Inter for everything else
+   LAYOUT: teal band with tabs, balance hero, then category gauges beside recent lines; one column on phones */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#0d1416);--ink:light-dark(#14161a,#e6ecec);--mut:light-dark(#5b6570,#9aa8a9);--rule:light-dark(#dfe3e6,#23302f);--soft:light-dark(#f1f5f5,#142224);--teal:light-dark(#0b5d63,#5cc0c6);--onteal:light-dark(#fff,#06181a);--band:light-dark(#0b5d63,#0f3236);--neg:light-dark(#b3261e,#ff8b80);--negbg:light-dark(#fbeceb,#2b1716);--pos:light-dark(#1c7a46,#6fd39a)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip;padding-bottom:110px}
+h1,h2,h3{font-family:'Libre Caslon Text',Georgia,serif;font-weight:400;line-height:1.1;margin:0;text-wrap:balance}
+h1{font-size:clamp(30px,5vw,40px)}h2{font-size:22px}h3{font-size:18px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.top{background:var(--band);color:#fff;padding:18px max(5vw,16px) 0}
+.in{max-width:1000px;margin:0 auto}
+.brand{font:400 22px/1.1 'Libre Caslon Text',Georgia,serif;margin:0 0 8px}
+#nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+#nav button{flex:none;background:none;border:0;color:#fff;opacity:.72;font-weight:500;font-size:15px;padding:12px 14px;min-height:46px;border-bottom:3px solid transparent;cursor:pointer}
+#nav button[aria-current=page]{opacity:1;border-color:#fff}
+.note{background:var(--soft);padding:10px max(5vw,16px);font-size:14px;text-align:center}
+main{max-width:1000px;margin:0 auto;padding:clamp(22px,4vw,40px) max(5vw,16px)}
+.mut{color:var(--mut)}.small{font-size:14px}
+.vh{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+.btn{min-height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--rule);background:var(--bg);font-weight:500;font-size:15px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--mut)}.pri{background:var(--teal);color:var(--onteal);border-color:transparent}.pri:hover{border-color:transparent;filter:brightness(1.08)}
+.danger{color:var(--neg)}.sm{min-height:36px;padding:0 12px;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.chip{min-height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--rule);background:var(--bg);cursor:pointer;font-size:15px}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hero{padding-bottom:28px;border-bottom:2px solid var(--ink)}
+.eyebrow{margin:0;color:var(--mut);font-size:15px}
+.big{font:400 clamp(46px,10vw,78px)/1 'Libre Caslon Text',Georgia,serif;margin:10px 0 8px;letter-spacing:-.01em;white-space:nowrap}
+.neg{color:var(--neg)}.pos{color:var(--pos)}
+.sub{margin:0 0 18px;color:var(--mut)}
+.gauge{position:relative;height:16px;border-radius:4px;background:var(--soft) repeating-linear-gradient(90deg,transparent 0 calc(10% - 1px),var(--rule) calc(10% - 1px) 10%)}
+.gauge i{position:absolute;inset:0 auto 0 0;background:var(--teal);border-radius:4px;transition:width .6s ease}
+.gauge i.over{background:var(--neg)}
+.gauge b{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink);margin-left:-1px}
+.gl{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--mut);margin:8px 0 0}
+.pace{margin:16px 0 0;font-size:17px;max-width:62ch}
+.cols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(24px,5vw,56px);margin-top:30px}
+.cols h2{margin-bottom:6px}
+.cat{display:grid;grid-template-columns:minmax(0,8.5em) minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--rule)}
+.cat .nm{display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat .am{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.cat .am small{color:var(--mut)}
+.bar{height:8px;background:var(--soft);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;border-radius:4px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none}
+.row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--rule);padding:11px 4px;cursor:pointer;min-height:58px}
+.row:hover{background:var(--soft)}
+.rt{display:flex;flex-direction:column;overflow:hidden}.rn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rm{font-size:13px;color:var(--mut)}
+.ra{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+.ra small{display:block;font-weight:400;font-size:13px;color:var(--mut)}
+.due{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--rule);font-size:15px}
+.empty{padding:20px 0 10px;max-width:640px}.empty p{font-size:17px}.empty .acts{margin-top:18px}
+.emptyl{padding:28px 0;color:var(--mut)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.card{border-bottom:1px solid var(--rule);padding:18px 0}
+.ch{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 20px}.ch p{margin:4px 0 0;font-size:14px}
+.ch .ra{font-size:20px}
+details.arc{margin-top:26px}details.arc summary{cursor:pointer;color:var(--mut);min-height:44px;display:flex;align-items:center}
+.filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr);gap:8px;margin-bottom:14px}
+.lt{display:flex;justify-content:space-between;color:var(--mut);margin:6px 0}
+.day h3{display:flex;justify-content:space-between;font:600 13px Inter,sans-serif;color:var(--mut);padding:18px 4px 6px;border-bottom:2px solid var(--ink)}
+.sec{padding:22px 0;border-bottom:1px solid var(--rule)}.sec p{margin:6px 0 12px}
+.cr{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;margin:8px 0}
+.cr.add{grid-template-columns:minmax(0,1fr) auto}
+input,select,textarea{width:100%;font-size:16px;min-height:44px;padding:8px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--bg)}
+input[type=checkbox]{width:20px;min-height:20px;height:20px;accent-color:var(--teal);margin:0}
+label,.lab{display:block;font-size:14px;color:var(--mut);margin:16px 0 6px}
+.ck{display:flex;gap:10px;align-items:center;color:var(--ink);font-size:15px;min-height:44px;margin:10px 0 0;cursor:pointer}
+.amt{font:400 34px 'Libre Caslon Text',Georgia,serif;min-height:62px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}.seg label{margin:0;position:relative}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg span{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 14px;border:1px solid var(--rule);border-radius:999px;color:var(--ink);font-size:15px;cursor:pointer}
+.seg input:checked+span{background:var(--teal);color:var(--onteal);border-color:var(--teal)}
+.seg input:focus-visible+span{outline:2px solid var(--teal);outline-offset:2px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.lg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 14px}
+.li{display:grid;gap:4px;margin:0;color:var(--ink)}.li span{display:flex;align-items:center;gap:7px;font-size:14px}
+#bf[data-type=monthly] .oo,#bf[data-type=oneoff] .mo,#bf.to .lims{display:none}
+.warn{margin-top:16px;padding:11px 13px;border-radius:10px;background:var(--soft);font-size:15px}
+.warn.bad{background:var(--negbg);color:var(--neg)}
+.err{color:var(--neg);font-size:14px;margin:10px 0 0;min-height:1em}
+.mf{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.mf .grow{margin-left:auto}
+#fab{position:fixed;right:max(16px,calc(50vw - 500px + 5vw));bottom:22px;min-height:56px;padding:0 24px;border-radius:999px;border:0;background:var(--teal);color:var(--onteal);font-weight:600;font-size:16px;box-shadow:0 8px 24px rgb(0 0 0/.22);cursor:pointer;z-index:20}
+.ov{position:fixed;inset:0;background:rgb(0 0 0/.45);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.ov[hidden],.toast[hidden],.note[hidden]{display:none}
+.sheet{background:var(--bg);width:min(580px,100%);max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:24px max(4vw,18px) 28px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:92px;background:var(--ink);color:var(--bg);border-radius:12px;padding:8px 8px 8px 16px;display:flex;gap:12px;align-items:center;z-index:60;max-width:calc(100vw - 32px);box-shadow:0 6px 20px rgb(0 0 0/.25)}
+.tb{background:none;border:0;color:inherit;font-weight:600;text-decoration:underline;min-height:40px;padding:0 10px;cursor:pointer}
+.csv{min-height:220px;font:13px/1.4 ui-monospace,monospace}
+.loading{color:var(--mut);padding:40px 0}
+@media(min-width:640px){.ov{align-items:center}.sheet{border-radius:18px}}
+@media(max-width:760px){.cols{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.filters input{grid-column:1/-1}.cat{grid-template-columns:minmax(0,1fr) auto}.cat .bar{grid-column:1/-1;order:3}.lg{grid-template-columns:minmax(0,1fr)}#fab{right:16px;left:16px}.gl{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.gauge i{transition:none}}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <p class="brand">Ringgit Ledger</p>
+  <nav id="nav" aria-label="Sections">
+    <button data-act="go" data-v="home">Overview</button>
+    <button data-act="go" data-v="ledger">Ledger</button>
+    <button data-act="go" data-v="budgets">Budgets</button>
+    <button data-act="go" data-v="recurring">Recurring</button>
+    <button data-act="go" data-v="options">Settings</button>
+  </nav>
+</div></header>
+<div id="note" class="note" hidden></div>
+<main id="view"><p class="loading">Opening your ledger…</p></main>
+<button id="fab" data-act="add">+ Add expense</button>
+<div id="modal" class="ov" hidden><div class="sheet" role="dialog" aria-modal="true" id="mbody"></div></div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script>
+{
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const p2=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const pd=s=>{const[a,b,c]=String(s).split('-').map(Number);return new Date(a,b-1,c,12)};
+const today=()=>iso(new Date());
+const addDays=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return iso(d)};
+const diff=(a,b)=>Math.round((pd(b)-pd(a))/864e5);
+const uidg=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const r2=n=>Math.round(n*100)/100;
+const num=v=>{const n=parseFloat(String(v??'').replace(/[^0-9.]/g,''));return isFinite(n)?r2(n):NaN};
+const fmt=n=>(n<-0.004?'−':'')+'RM '+Math.abs(n).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dlabel=s=>pd(s).toLocaleDateString('en-MY',{day:'numeric',month:'short'});
+const mlabel=m=>pd(m+'-01').toLocaleDateString('en-MY',{month:'long',year:'numeric'});
+const sum=a=>a.reduce((t,x)=>t+(+x.amount||0),0);
+const PALETTE=['#0b5d63','#2f6fb0','#7a4fb0','#c0532b','#b0892f','#3f8f4f','#a03a6b','#6b7280','#1e8a8a','#8a5a2b'];
+const PAY={cash:'Cash',card:'Card',ewallet:'E-wallet'};
+const VIEWS=['home','ledger','budgets','recurring','options'];
+const defCfg=()=>({cycleDay:1,categories:['Food','Transport','Bills','Shopping','Health','Entertainment','Savings','Other'].map((n,i)=>({id:n.toLowerCase(),name:n,color:PALETTE[i]})),budgets:[],recurring:[],posted:{}});
+
+let cfg=defCfg(),months={},view=VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'home',sel=null,local=false,col=null,loaded=false,recRan=false,undoFn=null,lastFocus=null,tt=null;
+const filt={m:today().slice(0,7),b:'',q:''};
+
+/* ---------- storage ---------- */
+const queue={};
+function put(id,data){
+  if(local){try{localStorage.setItem('rl-data',JSON.stringify({cfg,months}))}catch(e){}return}
+  if(!col)return;
+  queue[id]=(queue[id]||Promise.resolve()).then(()=>data?col.doc(id).set(data):col.doc(id).delete()).catch(e=>toast(e&&e.code==='quota_exceeded'?'Storage is full. Export, then delete old entries.':'Could not save. Check your connection.'));
+}
+const saveCfg=()=>put('config',JSON.parse(JSON.stringify(cfg)));
+const saveMonth=k=>put('m_'+k,months[k]&&months[k].length?{entries:months[k]}:null);
+const lsGet=()=>{try{return JSON.parse(localStorage.getItem('rl-last')||'{}')}catch(e){return{}}};
+const lsSet=v=>{try{localStorage.setItem('rl-last',JSON.stringify(v))}catch(e){}};
+function normalize(c){c=c||defCfg();c.cycleDay=c.cycleDay||1;c.categories=c.categories&&c.categories.length?c.categories:defCfg().categories;c.budgets=c.budgets||[];c.recurring=c.recurring||[];c.posted=c.posted||{};return c}
+
+/* ---------- data helpers ---------- */
+const all=()=>Object.values(months).flat();
+const B=id=>cfg.budgets.find(b=>b.id===id);
+const Cat=id=>cfg.categories.find(c=>c.id===id)||{id,name:'Uncategorised',color:'#888'};
+const activeBudgets=()=>cfg.budgets.filter(b=>!b.archived);
+function upsertEntry(e){
+  const touched=new Set();
+  for(const k in months){const i=months[k].findIndex(x=>x.id===e.id);if(i>-1){months[k].splice(i,1);touched.add(k)}}
+  const k=e.date.slice(0,7);(months[k]=months[k]||[]).push(e);touched.add(k);touched.forEach(saveMonth);
+}
+function removeEntry(id){for(const k in months){const i=months[k].findIndex(x=>x.id===id);if(i>-1){const r=months[k].splice(i,1)[0];saveMonth(k);return r}}return null}
+function cycleOf(s){
+  const cd=Math.min(28,Math.max(1,+cfg.cycleDay||1)),d=pd(s);let y=d.getFullYear(),m=d.getMonth();
+  if(d.getDate()<cd){m--;if(m<0){m=11;y--}}
+  let ny=y,nm=m+1;if(nm>11){nm=0;ny++}
+  return{start:iso(new Date(y,m,cd,12)),end:iso(new Date(ny,nm,cd-1,12))};
+}
+function stats(b,ref,excludeId){
+  ref=ref||today();
+  const ents=all().filter(e=>e.budgetId===b.id&&e.id!==excludeId),tops=b.topups||[],inR=(d,s,e)=>d>=s&&d<=e;
+  let s,e,total,list,carry=0;
+  if(b.type==='monthly'){
+    const c=cycleOf(ref);s=c.start;e=c.end;
+    if(b.rollover&&b.start<s){let c2=cycleOf(b.start),g=0;while(c2.start<s&&g++<240){carry+=b.amount+sum(tops.filter(x=>inR(x.date,c2.start,c2.end)))-sum(ents.filter(x=>inR(x.date,c2.start,c2.end)));c2=cycleOf(addDays(c2.end,1))}}
+    list=ents.filter(x=>inR(x.date,s,e));total=b.amount+sum(tops.filter(x=>inR(x.date,s,e)))+carry;
+  }else{s=b.start;e=b.end||'';list=ents;total=b.amount+sum(tops)}
+  const spent=r2(sum(list)),byCat={};list.forEach(x=>byCat[x.catId]=(byCat[x.catId]||0)+x.amount);
+  let pace=null;const t=today();
+  if(e&&t>=s&&t<=e){const days=diff(s,e)+1,el=diff(s,t)+1,left=diff(t,e)+1;pace={days,el,left,perDay:(total-spent)/left,avg:spent/el,expected:total*el/days}}
+  return{s,e,total:r2(total),carry:r2(carry),spent,remaining:r2(total-spent),byCat,list,pace};
+}
+function dueDate(r,c){
+  const s=pd(c.start);let y=s.getFullYear(),m=s.getMonth();
+  if(+r.day<s.getDate()){m++;if(m>11){m=0;y++}}
+  return iso(new Date(y,m,Math.min(+r.day,new Date(y,m+1,0).getDate()),12));
+}
+const recState=r=>{const c=cycleOf(today());return{c,due:dueDate(r,c),st:(cfg.posted[r.id]||{})[c.start]||''}};
+function mark(r,c,v){const p=cfg.posted[r.id]=cfg.posted[r.id]||{};if(v)p[c]=v;else delete p[c];const ks=Object.keys(p).sort();while(ks.length>4)delete p[ks.shift()]}
+function postRec(r,c,date){
+  upsertEntry({id:'r_'+r.id+'_'+c.start,date,amount:r2(+r.amount),catId:r.catId,budgetId:r.budgetId,note:r.name,pay:r.pay||'',rec:r.id});
+  mark(r,c.start,'posted');
+}
+function runRecurring(){
+  let n=0;const t=today();
+  cfg.recurring.forEach(r=>{const b=B(r.budgetId);if(!r.active||!b||b.archived||b.type!=='monthly')return;const{c,due,st}=recState(r);if(!st&&due<=t){postRec(r,c,due);n++}});
+  if(n){saveCfg();toast(`Posted ${n} recurring item${n>1?'s':''}`)}
+  return n;
+}
+
+/* ---------- UI shell ---------- */
+function note(t){const el=$('#note');el.textContent=t;el.hidden=!t}
+function toast(msg,undo){const el=$('#toast');el.innerHTML=`<span>${esc(msg)}</span>${undo?'<button class="tb" data-act="undo">Undo</button>':''}`;el.hidden=false;undoFn=undo||null;clearTimeout(tt);tt=setTimeout(()=>{el.hidden=true;undoFn=null},5500)}
+function openModal(html,mount){lastFocus=document.activeElement;$('#mbody').innerHTML=html;$('#modal').hidden=false;document.body.style.overflow='hidden';mount&&mount();const f=$('#mbody [autofocus]')||$('#mbody input,#mbody select');f&&f.focus()}
+function closeModal(){$('#modal').hidden=true;$('#mbody').innerHTML='';document.body.style.overflow='';lastFocus&&lastFocus.focus&&lastFocus.focus()}
+function go(v){view=v;try{location.hash=v}catch(e){}render();window.scrollTo(0,0)}
+function render(){
+  document.querySelectorAll('#nav [data-v]').forEach(b=>b.setAttribute('aria-current',b.dataset.v===view?'page':'false'));
+  if(!loaded){$('#view').innerHTML='<p class="loading">Opening your ledger…</p>';return}
+  $('#view').innerHTML=({home:renderHome,ledger:renderLedger,budgets:renderBudgets,recurring:renderRecurring,options:renderSettings}[view]||renderHome)();
+}
+const seg=(name,opts,val)=>`<div class="seg">${opts.map(([v,l,dot])=>`<label><input type="radio" name="${name}" value="${esc(v)}" ${v===val?'checked':''}><span>${dot?`<i class="dot" style="background:${esc(dot)}"></i>`:''}${esc(l)}</span></label>`).join('')}</div>`;
+function entryRow(e){
+  const c=Cat(e.catId),ref=e.amount<0;
+  return `<button class="row" data-act="editEntry" data-id="${esc(e.id)}"><i class="dot" style="background:${esc(c.color)}"></i><span class="rt"><span class="rn">${esc(e.note||c.name)}</span><span class="rm">${[e.note?c.name:'',PAY[e.pay]||'',ref?'Refund':'',e.rec?'Recurring':'',view==='ledger'&&B(e.budgetId)?B(e.budgetId).name:''].filter(Boolean).map(esc).join(' · ')||'&nbsp;'}</span></span><span class="ra ${ref?'pos':''}">${ref?'+'+fmt(-e.amount):fmt(e.amount)}<small>${dlabel(e.date)}</small></span></button>`;
+}
+
+/* ---------- views ---------- */
+function renderHome(){
+  const bs=activeBudgets();
+  if(!bs.length)return `<section class="empty"><h1>Start with one pot of money</h1><p class="mut">A budget is an amount you plan to spend: a monthly allowance that resets each cycle, or a one-off pot for a trip or an event. Expenses come out of it, and this page shows what's left and whether you're on pace.</p><div class="acts"><button class="btn pri" data-act="newBudget" data-type="monthly">Create a monthly budget</button><button class="btn" data-act="newBudget" data-type="oneoff">Create a one-off pot</button></div></section>`;
+  if(!B(sel)||B(sel).archived)sel=bs[0].id;
+  const b=B(sel),st=stats(b),over=st.remaining<0;
+  const pct=st.total>0?Math.min(100,Math.max(0,st.spent/st.total*100)):(st.spent>0?100:0);
+  const exp=st.pace&&st.total>0?Math.min(100,st.pace.expected/st.total*100):null;
+  let pace='';
+  if(over)pace=`<p class="pace neg"><strong>Over budget by ${fmt(-st.remaining)}.</strong> Top it up from Budgets if more money came in.</p>`;
+  else if(st.pace){const p=st.pace,d=st.spent-p.expected;pace=`<p class="pace">You can spend <strong>${fmt(p.perDay)} a day</strong> for the next ${p.left} day${p.left>1?'s':''}. So far you've averaged ${fmt(p.avg)} a day, ${d>0.005?`<span class="neg">${fmt(d)} ahead of an even pace</span>`:'within an even pace'}.</p>`}
+  const cats=cfg.categories.map(c=>({c,sp:r2(st.byCat[c.id]||0),lim:b.totalOnly?0:+((b.limits||{})[c.id]||0)})).filter(x=>x.sp||x.lim).sort((a,z)=>(z.lim?1:0)-(a.lim?1:0)||z.sp-a.sp);
+  Object.keys(st.byCat).filter(id=>!cfg.categories.find(c=>c.id===id)).forEach(id=>cats.push({c:Cat(id),sp:r2(st.byCat[id]),lim:0}));
+  const catHtml=cats.length?cats.map(({c,sp,lim})=>{const w=lim?Math.min(100,sp/lim*100):(st.total?Math.min(100,Math.max(0,sp/st.total*100)):0),o=lim&&sp>lim;return `<div class="cat"><span class="nm"><i class="dot" style="background:${esc(c.color)}"></i>${esc(c.name)}</span><span class="bar"><i style="width:${w}%;background:${o?'var(--neg)':esc(c.color)}"></i></span><span class="am ${o?'neg':''}">${fmt(sp)}${lim?` <small>/ ${fmt(lim)}</small>`:''}</span></div>`}).join(''):'<p class="mut">Nothing spent yet this period.</p>';
+  const recent=st.list.slice().sort((a,z)=>a.date<z.date?1:a.date>z.date?-1:0).slice(0,6);
+  const due=cfg.recurring.filter(r=>r.active&&r.budgetId===b.id&&b.type==='monthly').map(r=>({r,...recState(r)})).filter(x=>!x.st);
+  return `${bs.length>1?`<div class="chips" role="group" aria-label="Budget">${bs.map(x=>`<button class="chip" data-act="sel" data-id="${esc(x.id)}" aria-pressed="${x.id===b.id}">${esc(x.name)}</button>`).join('')}</div>`:''}
+  <section class="hero"><p class="eyebrow">${esc(b.name)} · ${b.type==='monthly'?'left this cycle':'left in this pot'} · ${dlabel(st.s)} – ${st.e?dlabel(st.e):'no end date'}</p>
+  <div class="big ${over?'neg':''}">${fmt(st.remaining)}</div>
+  <p class="sub">of ${fmt(st.total)}${st.carry?` (includes ${fmt(st.carry)} rolled over)`:''} · spent ${fmt(st.spent)}</p>
+  <div class="gauge" role="img" aria-label="${Math.round(pct)}% spent"><i class="${over?'over':''}" style="width:${pct}%"></i>${exp!=null?`<b style="left:${exp}%"></b>`:''}</div>
+  <div class="gl"><span>${Math.round(pct)}% spent</span>${exp!=null?`<span>▏ marks an even pace (${Math.round(exp)}%)</span>`:''}</div>${pace}</section>
+  <div class="cols"><section><h2>${b.totalOnly?'Where it went':'Categories'}</h2>${catHtml}</section>
+  <section><h2>Recent</h2>${recent.length?recent.map(entryRow).join(''):'<p class="mut">No expenses logged yet. Tap <strong>Add expense</strong> to log your first one.</p>'}
+  ${recent.length?'<div class="acts"><button class="btn sm" data-act="go" data-v="ledger">Full ledger</button></div>':''}
+  ${due.length?`<h2 style="margin-top:28px">Coming up</h2>${due.map(x=>`<div class="due"><span>${esc(x.r.name)} · ${fmt(+x.r.amount)} · due ${dlabel(x.due)}</span><button class="btn sm" data-act="skipRec" data-id="${esc(x.r.id)}">Skip this cycle</button></div>`).join('')}`:''}</section></div>`;
+}
+function renderLedger(){
+  const ms=[...new Set([today().slice(0,7),...Object.keys(months).filter(k=>months[k].length)])].sort().reverse();
+  return `<div class="vh"><h1>Ledger</h1></div><div class="filters"><select id="fm" aria-label="Month"><option value="">All months</option>${ms.map(m=>`<option value="${m}" ${filt.m===m?'selected':''}>${mlabel(m)}</option>`).join('')}</select><select id="fb" aria-label="Budget"><option value="">All budgets</option>${cfg.budgets.map(b=>`<option value="${esc(b.id)}" ${filt.b===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select><input id="fq" type="search" placeholder="Search notes or categories" aria-label="Search" value="${esc(filt.q)}"></div><div id="llist">${ledgerList()}</div>`;
+}
+function ledgerList(){
+  const q=filt.q.trim().toLowerCase();
+  const L=all().filter(e=>(!filt.m||e.date.startsWith(filt.m))&&(!filt.b||e.budgetId===filt.b)&&(!q||(e.note||'').toLowerCase().includes(q)||Cat(e.catId).name.toLowerCase().includes(q))).sort((a,z)=>a.date<z.date?1:a.date>z.date?-1:0);
+  if(!L.length)return '<p class="emptyl">No entries match. Tap <strong>Add expense</strong> to log one.</p>';
+  const days=[];L.forEach(e=>{const l=days[days.length-1];if(l&&l[0]===e.date)l[1].push(e);else days.push([e.date,[e]])});
+  return `<p class="lt"><span>${L.length} entr${L.length>1?'ies':'y'}</span><strong>${fmt(sum(L))} net</strong></p>`+days.map(([d,es])=>`<div class="day"><h3><span>${pd(d).toLocaleDateString('en-MY',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span><span>${fmt(sum(es))}</span></h3>${es.map(entryRow).join('')}</div>`).join('');
+}
+function renderBudgets(){
+  const act=cfg.budgets.filter(b=>!b.archived),arc=cfg.budgets.filter(b=>b.archived);
+  const card=b=>{const st=stats(b),n=all().some(e=>e.budgetId===b.id),tp=(b.topups||[]).length;
+    return `<article class="card"><div class="ch"><div><h3>${esc(b.name)}</h3><p class="mut">${b.type==='monthly'?`Monthly, ${fmt(b.amount)} per cycle${b.rollover?' · leftover rolls over':''}`:`One-off pot of ${fmt(b.amount)} · from ${dlabel(b.start)}${b.end?' to '+dlabel(b.end):''}`}${b.totalOnly?' · total only':''}${tp?` · ${tp} top-up${tp>1?'s':''}`:''}</p></div><div class="ra ${st.remaining<0?'neg':''}">${fmt(st.remaining)}<small>left of ${fmt(st.total)}</small></div></div>
+    <div class="acts">${b.archived?`<button class="btn sm" data-act="unarchive" data-id="${esc(b.id)}">Restore</button>`:`<button class="btn sm" data-act="editBudget" data-id="${esc(b.id)}">Edit</button><button class="btn sm" data-act="topup" data-id="${esc(b.id)}">Top up</button><button class="btn sm" data-act="archive" data-id="${esc(b.id)}">Archive</button>`}${n?'':`<button class="btn sm danger" data-act="delBudget" data-id="${esc(b.id)}">Delete</button>`}</div></article>`};
+  return `<div class="vh"><h1>Budgets</h1><button class="btn pri" data-act="newBudget">New budget</button></div>${act.length?act.map(card).join(''):'<p class="mut">No budgets yet. Create one to start logging expenses.</p>'}${arc.length?`<details class="arc"><summary>Archived (${arc.length})</summary>${arc.map(card).join('')}</details>`:''}<p class="mut small" style="margin-top:20px">Budgets that have entries can be archived but not deleted, so your history stays intact.</p>`;
+}
+function renderRecurring(){
+  const rows=cfg.recurring.map(r=>{const b=B(r.budgetId),c=Cat(r.catId),s=recState(r);
+    const status=!r.active?'Paused':!b||b.type!=='monthly'||b.archived?'Needs an active monthly budget':s.st==='posted'?'Posted this cycle':s.st==='skipped'?'Skipped this cycle':`Due ${dlabel(s.due)}`;
+    return `<article class="card"><div class="ch"><div><h3>${esc(r.name)}</h3><p class="mut"><i class="dot" style="background:${esc(c.color)}"></i> ${esc(c.name)} · day ${esc(r.day)} · ${esc(b?b.name:'No budget')}${r.pay?' · '+PAY[r.pay]:''}</p></div><div class="ra">${fmt(+r.amount)}<small>${status}</small></div></div>
+    <div class="acts"><button class="btn sm" data-act="editRec" data-id="${esc(r.id)}">Edit</button>${r.active&&!s.st?`<button class="btn sm" data-act="postRec" data-id="${esc(r.id)}">Post now</button><button class="btn sm" data-act="skipRec" data-id="${esc(r.id)}">Skip this cycle</button>`:''}${s.st==='skipped'?`<button class="btn sm" data-act="unskipRec" data-id="${esc(r.id)}">Undo skip</button>`:''}<button class="btn sm" data-act="toggleRec" data-id="${esc(r.id)}">${r.active?'Pause':'Resume'}</button><button class="btn sm danger" data-act="delRec" data-id="${esc(r.id)}">Delete</button></div></article>`}).join('');
+  return `<div class="vh"><h1>Recurring</h1><button class="btn pri" data-act="newRec">Add recurring</button></div><p class="mut" style="margin-top:0">Fixed costs such as rent, phone bills and subscriptions post themselves on their day each cycle. Edit or delete a posted entry in the ledger like any other.</p>${rows||'<p class="emptyl">No recurring items yet.</p>'}`;
+}
+function renderSettings(){
+  return `<h1>Settings</h1>
+  <section class="sec"><h2>Monthly cycle</h2><p class="mut">Monthly budgets reset on this day. Set it to your payday if you're paid mid-month.</p><label for="cd">Cycle starts on day</label><select id="cd" style="max-width:200px">${Array.from({length:28},(_,i)=>`<option ${cfg.cycleDay===i+1?'selected':''}>${i+1}</option>`).join('')}</select><p class="mut small">Current cycle: ${dlabel(cycleOf(today()).start)} – ${dlabel(cycleOf(today()).end)}</p></section>
+  <section class="sec"><h2>Categories</h2><p class="mut">Rename any category by editing its name. A category in use can't be deleted.</p>${cfg.categories.map(c=>`<div class="cr"><i class="dot" style="background:${esc(c.color)}"></i><input value="${esc(c.name)}" data-cat="${esc(c.id)}" aria-label="Category name" maxlength="30"><button class="btn sm danger" data-act="delCat" data-id="${esc(c.id)}">Delete</button></div>`).join('')}<form id="addcat" class="cr add"><input name="n" placeholder="New category" aria-label="New category name" maxlength="30"><button class="btn sm">Add</button></form></section>
+  <section class="sec"><h2>Export</h2><p class="mut">Every expense, refund and top-up as a CSV file that opens in Excel or Google Sheets.</p><button class="btn pri" data-act="export">Export CSV</button></section>
+  <p class="mut small">${local?'Saved in this browser only. Open this page on claude.ai while signed in to keep it in your account.':'Saved privately to your Claude account, so it follows you to any device where you\'re signed in.'}</p>`;
+}
+
+/* ---------- forms ---------- */
+function entryForm(e){
+  const bs=activeBudgets();if(!bs.length){toast('Create a budget first');go('budgets');budgetForm(null,'monthly');return}
+  const last=lsGet(),edit=!!e;
+  e=e||{date:today(),amount:'',catId:last.cat,budgetId:B(sel)&&!B(sel).archived?sel:last.b,note:'',pay:last.pay||''};
+  if(!cfg.categories.find(c=>c.id===e.catId))e.catId=cfg.categories[0].id;
+  if(!B(e.budgetId)||(B(e.budgetId).archived&&!edit))e.budgetId=bs[0].id;
+  const opts=cfg.budgets.filter(b=>!b.archived||b.id===e.budgetId);
+  openModal(`<h2>${edit?'Edit entry':'Add expense'}</h2><form id="ef" data-id="${edit?esc(e.id):''}">
+  <div style="margin-top:14px">${seg('kind',[['exp','Expense'],['refund','Refund']],e.amount<0?'refund':'exp')}</div>
+  <label for="ea">Amount (RM)</label><input id="ea" name="amount" class="amt" inputmode="decimal" autocomplete="off" placeholder="0.00" value="${e.amount===''?'':Math.abs(e.amount).toFixed(2)}" ${edit?'':'autofocus'}>
+  <span class="lab">Category</span>${seg('cat',cfg.categories.map(c=>[c.id,c.name,c.color]),e.catId)}
+  <div class="two"><div><label for="eb">Budget</label><select id="eb" name="budget">${opts.map(b=>`<option value="${esc(b.id)}" ${b.id===e.budgetId?'selected':''}>${esc(b.name)}</option>`).join('')}</select></div><div><label for="ed">Date</label><input id="ed" type="date" name="date" value="${e.date}" required></div></div>
+  <span class="lab">Paid with (optional)</span>${seg('pay',[['','Not set'],['cash','Cash'],['card','Card'],['ewallet','E-wallet']],e.pay||'')}
+  <label for="en">Note (optional)</label><input id="en" name="note" maxlength="140" value="${esc(e.note)}" placeholder="e.g. Lunch at mamak">
+  <div id="warn" class="warn" aria-live="polite"></div><p class="err" id="eerr"></p>
+  <div class="mf"><button class="btn pri" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button>${edit?`<button class="btn danger grow" type="button" data-act="delEntry" data-id="${esc(e.id)}">Delete</button>`:''}</div></form>`,()=>{const f=$('#ef'),u=()=>{const[c,t]=warnFor(f);const w=$('#warn');w.className='warn '+c;w.textContent=t};f.addEventListener('input',u);f.addEventListener('change',u);u()});
+}
+function warnFor(f){
+  const d=Object.fromEntries(new FormData(f)),b=B(d.budget);if(!b)return['',''];
+  const st=stats(b,d.date||today(),f.dataset.id),amt=num(d.amount);
+  if(!(amt>0))return['',`${fmt(st.remaining)} left in ${b.name}.`];
+  const a=d.kind==='refund'?-amt:amt,c=Cat(d.cat),lim=b.totalOnly?0:+((b.limits||{})[d.cat]||0),cs=(st.byCat[d.cat]||0)+a,m=[];
+  if(a>0&&lim&&cs>lim)m.push(`This puts ${c.name} at ${Math.round(cs/lim*100)}% of its ${fmt(lim)} limit.`);
+  if(a>0&&st.spent+a>st.total)m.push(`This takes ${b.name} over by ${fmt(st.spent+a-st.total)}.`);
+  return m.length?['bad',m.join(' ')+' You can still save it.']:['',`${fmt(st.remaining-a)} left in ${b.name} after this.`];
+}
+function budgetForm(b,type){
+  const isNew=!b;b=b||{type:type||'monthly',name:'',amount:'',start:type==='oneoff'?today():cycleOf(today()).start,end:'',rollover:false,totalOnly:false,limits:{}};
+  openModal(`<h2>${isNew?'New budget':'Edit budget'}</h2><form id="bf" data-type="${b.type}" data-id="${isNew?'':esc(b.id)}" class="${b.totalOnly?'to':''}">
+  <label for="bn">Name</label><input id="bn" name="name" maxlength="40" value="${esc(b.name)}" placeholder="${b.type==='oneoff'?'e.g. Langkawi trip':'e.g. Monthly spending'}" autofocus>
+  <span class="lab">Kind</span>${seg('type',[['monthly','Monthly, resets each cycle'],['oneoff','One-off pot']],b.type)}
+  <label for="ba">Amount (RM)</label><input id="ba" name="amount" class="amt" inputmode="decimal" value="${b.amount===''?'':(+b.amount).toFixed(2)}" placeholder="0.00">
+  <div class="two"><div><label for="bs">Start date</label><input type="date" id="bs" name="start" value="${b.start}"></div><div class="oo"><label for="be">End date (optional)</label><input type="date" id="be" name="end" value="${b.end||''}"></div></div>
+  <label class="ck mo"><input type="checkbox" name="rollover" ${b.rollover?'checked':''}> Carry leftover (or overspend) into the next cycle</label>
+  <label class="ck"><input type="checkbox" name="totalOnly" ${b.totalOnly?'checked':''}> Track the total only, no category limits</label>
+  <div class="lims"><span class="lab">Category limits (leave blank for no limit)</span><div class="lg">${cfg.categories.map(c=>`<label class="li"><span><i class="dot" style="background:${esc(c.color)}"></i>${esc(c.name)}</span><input name="lim_${esc(c.id)}" inputmode="decimal" placeholder="No limit" value="${(b.limits||{})[c.id]??''}"></label>`).join('')}</div><p class="mut small" id="limsum"></p></div>
+  <p class="err" id="berr"></p><div class="mf"><button class="btn pri" type="submit">Save budget</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,()=>{
+    const f=$('#bf'),u=()=>{const d=Object.fromEntries(new FormData(f));f.dataset.type=d.type;f.classList.toggle('to',!!d.totalOnly);const t=r2(cfg.categories.reduce((s,c)=>s+(num(d['lim_'+c.id])||0),0)),a=num(d.amount);$('#limsum').textContent=t?`Limits add up to ${fmt(t)}${a>0?` of ${fmt(a)}`:''}${a>0&&t>a?', more than the budget.':'.'}`:''};
+    f.addEventListener('input',u);f.addEventListener('change',u);u()});
+}
+function recForm(r){
+  const mb=activeBudgets().filter(b=>b.type==='monthly');if(!mb.length){toast('Recurring items need a monthly budget. Create one first.');return}
+  const isNew=!r;r=r||{name:'',amount:'',budgetId:mb[0].id,catId:cfg.categories.find(c=>c.id==='bills')?'bills':cfg.categories[0].id,day:cfg.cycleDay,pay:'',active:true};
+  const opts=mb.concat(B(r.budgetId)&&!mb.includes(B(r.budgetId))?[B(r.budgetId)]:[]);
+  openModal(`<h2>${isNew?'Add recurring item':'Edit recurring item'}</h2><form id="rf" data-id="${isNew?'':esc(r.id)}">
+  <label for="rn">Name</label><input id="rn" name="name" maxlength="40" value="${esc(r.name)}" placeholder="e.g. Phone bill" autofocus>
+  <div class="two"><div><label for="ra">Amount (RM)</label><input id="ra" name="amount" inputmode="decimal" value="${r.amount===''?'':(+r.amount).toFixed(2)}" placeholder="0.00"></div><div><label for="rd">Day of month</label><input id="rd" name="day" type="number" min="1" max="31" value="${esc(r.day)}"></div></div>
+  <div class="two"><div><label for="rb">Budget</label><select id="rb" name="budget">${opts.map(b=>`<option value="${esc(b.id)}" ${b.id===r.budgetId?'selected':''}>${esc(b.name)}</option>`).join('')}</select></div><div><label for="rc">Category</label><select id="rc" name="cat">${cfg.categories.map(c=>`<option value="${esc(c.id)}" ${c.id===r.catId?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div></div>
+  <span class="lab">Paid with (optional)</span>${seg('pay',[['','Not set'],['cash','Cash'],['card','Card'],['ewallet','E-wallet']],r.pay||'')}
+  <p class="err" id="rerr"></p><div class="mf"><button class="btn pri" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`);
+}
+const SUBMIT={
+  ef(f){const d=Object.fromEntries(new FormData(f)),amt=num(d.amount);if(!(amt>0)){$('#eerr').textContent='Enter an amount above zero.';return}
+    const id=f.dataset.id,old=id?all().find(x=>x.id===id):null;
+    const en={id:old?old.id:'e_'+uidg(),date:d.date||today(),amount:d.kind==='refund'?-amt:amt,catId:d.cat,budgetId:d.budget,note:(d.note||'').trim(),pay:d.pay||''};if(old&&old.rec)en.rec=old.rec;
+    upsertEntry(en);lsSet({cat:en.catId,b:en.budgetId,pay:en.pay});closeModal();render();toast(old?'Entry updated':'Expense saved')},
+  bf(f){const d=Object.fromEntries(new FormData(f)),amt=num(d.amount),name=(d.name||'').trim();
+    if(!name){$('#berr').textContent='Give the budget a name.';return}if(!(amt>0)){$('#berr').textContent='Enter an amount above zero.';return}
+    if(!d.start){$('#berr').textContent='Pick a start date.';return}if(d.type==='oneoff'&&d.end&&d.end<d.start){$('#berr').textContent='The end date is before the start date.';return}
+    const limits={};cfg.categories.forEach(c=>{const v=num(d['lim_'+c.id]);if(v>0)limits[c.id]=v});
+    const v={name,type:d.type,amount:amt,start:d.start,end:d.type==='oneoff'?(d.end||''):'',rollover:d.type==='monthly'&&!!d.rollover,totalOnly:!!d.totalOnly,limits};
+    let b=B(f.dataset.id);if(b)Object.assign(b,v);else{b={id:'b_'+uidg(),topups:[],archived:false,...v};cfg.budgets.push(b)}
+    sel=b.id;saveCfg();closeModal();if(view!=='budgets')view='home';render();toast('Budget saved')},
+  tf(f){const d=Object.fromEntries(new FormData(f)),amt=num(d.amount),b=B(f.dataset.id);if(!(amt>0)){$('#terr').textContent='Enter an amount above zero.';return}
+    (b.topups=b.topups||[]).push({id:'t_'+uidg(),date:d.date||today(),amount:amt,note:(d.note||'').trim()});saveCfg();closeModal();render();toast(`Added ${fmt(amt)} to ${b.name}`)},
+  rf(f){const d=Object.fromEntries(new FormData(f)),amt=num(d.amount),name=(d.name||'').trim(),day=Math.round(+d.day);
+    if(!name){$('#rerr').textContent='Give it a name.';return}if(!(amt>0)){$('#rerr').textContent='Enter an amount above zero.';return}if(!(day>=1&&day<=31)){$('#rerr').textContent='Day must be between 1 and 31.';return}
+    const v={name,amount:amt,day,budgetId:d.budget,catId:d.cat,pay:d.pay||''};let r=cfg.recurring.find(x=>x.id===f.dataset.id);
+    if(r)Object.assign(r,v);else{r={id:'r'+uidg(),active:true,...v};cfg.recurring.push(r)}
+    closeModal();if(!runRecurring())saveCfg();render();toast('Recurring item saved')},
+  addcat(f){const n=(new FormData(f).get('n')||'').trim();if(!n)return;cfg.categories.push({id:'c_'+uidg(),name:n,color:PALETTE[cfg.categories.length%PALETTE.length]});saveCfg();render();$('#addcat input').focus()}
+};
+function twoTap(t,fn){if(t.dataset.armed){fn()}else{t.dataset.armed=1;t.textContent='Tap again to delete';setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent='Delete'}},3500)}}
+async function exportCsv(){
+  const rows=[['Date','Amount (MYR)','Type','Category','Budget','Payment','Note']];
+  const L=all().map(e=>[e.date,e.amount.toFixed(2),e.amount<0?'Refund':'Expense',Cat(e.catId).name,(B(e.budgetId)||{}).name||'',PAY[e.pay]||'',e.note||'']);
+  cfg.budgets.forEach(b=>(b.topups||[]).forEach(t=>L.push([t.date,(-t.amount).toFixed(2),'Top-up','',b.name,'',t.note||''])));
+  L.sort((a,z)=>a[0]<z[0]?-1:a[0]>z[0]?1:0);
+  const csv=rows.concat(L).map(r=>r.map(v=>{v=String(v);return/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\n');
+  const dl=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;
+  if(dl){try{await dl.save({filename:'ringgit-ledger-'+today()+'.csv',data:csv});toast('CSV exported')}catch(e){toast('Export cancelled')}return}
+  try{await navigator.clipboard.writeText(csv);toast('CSV copied. Paste it into Excel or Google Sheets.')}
+  catch(e){openModal(`<h2>Your CSV</h2><p class="mut">Select all and copy, then paste into a spreadsheet.</p><textarea class="csv" readonly>${esc(csv)}</textarea><div class="mf"><button class="btn" data-act="close">Close</button></div>`)}
+}
+
+/* ---------- events ---------- */
+const ACT={
+  go:t=>go(t.dataset.v),add:()=>entryForm(),close:()=>closeModal(),
+  sel:t=>{sel=t.dataset.id;render()},
+  editEntry:t=>{const e=all().find(x=>x.id===t.dataset.id);e&&entryForm(e)},
+  delEntry:t=>{const r=removeEntry(t.dataset.id);closeModal();render();if(r)toast('Entry deleted',()=>{upsertEntry(r);render()})},
+  undo:()=>{const f=undoFn;undoFn=null;$('#toast').hidden=true;f&&f()},
+  newBudget:t=>budgetForm(null,t.dataset.type),editBudget:t=>budgetForm(B(t.dataset.id)),
+  topup:t=>{const b=B(t.dataset.id);openModal(`<h2>Top up ${esc(b.name)}</h2><form id="tf" data-id="${esc(b.id)}"><label for="ta">Amount (RM)</label><input id="ta" name="amount" class="amt" inputmode="decimal" placeholder="0.00" autofocus><label for="tdt">Date</label><input id="tdt" type="date" name="date" value="${today()}"><label for="tn">Note (optional)</label><input id="tn" name="note" maxlength="80" placeholder="e.g. Duit raya, side job"><p class="err" id="terr"></p><div class="mf"><button class="btn pri" type="submit">Add money</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`)},
+  archive:t=>{B(t.dataset.id).archived=true;if(sel===t.dataset.id)sel=null;saveCfg();render();toast('Budget archived')},
+  unarchive:t=>{B(t.dataset.id).archived=false;saveCfg();render()},
+  delBudget:t=>twoTap(t,()=>{const id=t.dataset.id;cfg.budgets=cfg.budgets.filter(b=>b.id!==id);cfg.recurring=cfg.recurring.filter(r=>r.budgetId!==id);saveCfg();render();toast('Budget deleted')}),
+  newRec:()=>recForm(),editRec:t=>recForm(cfg.recurring.find(r=>r.id===t.dataset.id)),
+  postRec:t=>{const r=cfg.recurring.find(x=>x.id===t.dataset.id),s=recState(r);postRec(r,s.c,s.due<today()?s.due:today());saveCfg();render();toast(`${r.name} posted`)},
+  skipRec:t=>{const r=cfg.recurring.find(x=>x.id===t.dataset.id);mark(r,recState(r).c.start,'skipped');saveCfg();render();toast(`${r.name} skipped this cycle`,()=>{mark(r,recState(r).c.start,'');saveCfg();render()})},
+  unskipRec:t=>{const r=cfg.recurring.find(x=>x.id===t.dataset.id);mark(r,recState(r).c.start,'');if(!runRecurring())saveCfg();render()},
+  toggleRec:t=>{const r=cfg.recurring.find(x=>x.id===t.dataset.id);r.active=!r.active;if(!(r.active&&runRecurring()))saveCfg();render()},
+  delRec:t=>twoTap(t,()=>{cfg.recurring=cfg.recurring.filter(r=>r.id!==t.dataset.id);delete cfg.posted[t.dataset.id];saveCfg();render()}),
+  delCat:t=>{const id=t.dataset.id,n=all().filter(e=>e.catId===id).length+cfg.recurring.filter(r=>r.catId===id).length;
+    if(n){toast(`${Cat(id).name} is used ${n} time${n>1?'s':''}. Rename it instead.`);return}
+    twoTap(t,()=>{cfg.categories=cfg.categories.filter(c=>c.id!==id);cfg.budgets.forEach(b=>{if(b.limits)delete b.limits[id]});saveCfg();render()})},
+  export:()=>exportCsv()
+};
+document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(t&&ACT[t.dataset.act]){e.preventDefault();ACT[t.dataset.act](t,e)}});
+document.addEventListener('submit',e=>{const f=e.target;if(SUBMIT[f.id]){e.preventDefault();SUBMIT[f.id](f)}});
+document.addEventListener('input',e=>{if(e.target.id==='fq'){filt.q=e.target.value;$('#llist').innerHTML=ledgerList()}});
+document.addEventListener('change',e=>{const t=e.target;
+  if(t.id==='fm'||t.id==='fb'){filt[t.id==='fm'?'m':'b']=t.value;$('#llist').innerHTML=ledgerList()}
+  else if(t.id==='cd'){cfg.cycleDay=+t.value;saveCfg();if(!runRecurring())0;render()}
+  else if(t.dataset.cat){const c=cfg.categories.find(x=>x.id===t.dataset.cat),v=t.value.trim();if(c&&v&&v!==c.name){c.name=v;saveCfg();toast('Category renamed')}else t.value=c?c.name:''}});
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#modal').hidden)closeModal()});
+window.addEventListener('hashchange',()=>{const v=location.hash.slice(1);if(VIEWS.includes(v)&&v!==view){view=v;render()}});
+
+/* ---------- boot ---------- */
+async function boot(){
+  render();
+  let dbn=null,user=null,id=null;
+  try{if(window.claude&&window.claude.use)[dbn,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')])}catch(e){}
+  try{id=user?await user.id():null}catch(e){}
+  if(!dbn||!id){
+    local=true;try{const v=JSON.parse(localStorage.getItem('rl-data')||'null');if(v){cfg=normalize(v.cfg);months=v.months||{}}}catch(e){}
+    loaded=true;note('Saving in this browser only. Sign in on claude.ai to keep your ledger in your account.');runRecurring();render();return;
+  }
+  col=dbn.collection('data/users/'+id);
+  const timer=setTimeout(()=>{note(loaded?'Your saved data may be out of date. Checking the connection…':"Can't reach your saved data yet. Check your connection.")},10000);
+  col.onSnapshot(snap=>{
+    let c=null;const m={};
+    snap.docs.forEach(d=>{if(!d.exists)return;const v=d.data();if(d.id==='config')c=JSON.parse(JSON.stringify(v));else if(d.id.startsWith('m_'))m[d.id.slice(2)]=JSON.parse(JSON.stringify(v.entries||[]))});
+    if(!snap.metadata.fromCache){clearTimeout(timer);note('')}
+    if(!c&&snap.metadata.fromCache&&!loaded)return;
+    cfg=normalize(c||(loaded?cfg:null));months=m;loaded=true;
+    if(!snap.metadata.fromCache&&!recRan){recRan=true;runRecurring()}
+    if(document.activeElement&&document.activeElement.id==='fq'&&$('#llist'))$('#llist').innerHTML=ledgerList();else render();
+  },err=>{clearTimeout(timer);note('Your saved data is unavailable right now. Changes may not be kept.');if(!loaded){loaded=true;render()}});
+}
+boot();
+}
+</script>
+</body>
+</html>
